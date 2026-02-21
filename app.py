@@ -2,8 +2,7 @@ import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 import json
-from mistralai.client import MistralClient
-from mistralai.models.chat_completion import ChatMessage
+from mistralai import Mistral # <-- NOUVELLE SYNTAXE ICI
 
 # Configuration de la page
 st.set_page_config(page_title="AIO Core - Auditeur Sémantique", page_icon="🛡️", layout="wide")
@@ -17,7 +16,7 @@ url_input = st.text_input("Entrez l'URL à auditer (ex: votre lien Netlify) :", 
 if st.button("Lancer l'Audit AIO", type="primary"):
     with st.spinner("Aspiration du site et analyse en cours..."):
         try:
-            # 2. Aspiration de la page (en se déguisant en vrai navigateur)
+            # 2. Aspiration de la page
             headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"}
             response = requests.get(url_input, headers=headers)
             response.raise_for_status()
@@ -28,15 +27,14 @@ if st.button("Lancer l'Audit AIO", type="primary"):
             json_ld_data = "Aucun JSON-LD trouvé."
             scripts = soup.find_all('script', type='application/ld+json')
             if scripts:
-                json_ld_data = scripts[0].string # On prend le premier bloc trouvé
+                json_ld_data = scripts[0].string 
 
             # 4. Extraction du texte visible (La vérité)
-            # On supprime les scripts et styles pour ne garder que le texte lu par l'humain
             for script in soup(["script", "style"]):
                 script.extract()
             visible_text = soup.get_text(separator='\n', strip=True)
 
-            # 5. Affichage des données brutes (pour prouver au client qu'on voit tout)
+            # 5. Affichage des données brutes
             col1, col2 = st.columns(2)
             with col1:
                 st.subheader("🕵️ Données Cachées (JSON-LD)")
@@ -46,7 +44,8 @@ if st.button("Lancer l'Audit AIO", type="primary"):
                 st.text(visible_text[:1000] + "...")
 
             # 6. Le Super-Prompt envoyé à Mistral
-            client = MistralClient(api_key="GYYg0c5eMGqq9owHVjqmxVwGz1gbbzI3") # METS TA CLÉ ICI
+            # N'OUBLIE PAS DE REMETTRE TA CLÉ API ICI 👇
+            client = Mistral(api_key="GYYg0c5eMGqq9owHVjqmxVwGz1gbbzI3") 
             
             prompt = f"""
             Tu es l'IA principale d'un outil d'audit nommé "AIO Core".
@@ -67,12 +66,15 @@ if st.button("Lancer l'Audit AIO", type="primary"):
             Si tout correspond, indique que le site est "AIO Compliant".
             """
 
-            messages = [ChatMessage(role="user", content=prompt)]
-            
-            # 7. Appel à l'IA
-            chat_response = client.chat(
+            # 7. Appel à l'IA avec la NOUVELLE SYNTAXE
+            chat_response = client.chat.complete(
                 model="mistral-large-latest",
-                messages=messages
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    }
+                ]
             )
             
             # 8. Affichage du verdict final
