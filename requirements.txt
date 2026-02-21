@@ -2,3 +2,5 @@ streamlit
 requests
 beautifulsoup4
 mistralai
+markdown
+xhtml2pdf
